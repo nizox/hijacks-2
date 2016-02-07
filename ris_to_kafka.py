@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("collector")
-    parser.add_argument("--from-beginning")
+    parser.add_argument("--from-beginning", action="store_true")
     parser.add_argument("--ripe-servers", default=",".join(RIPE_SERVERS))
     parser.add_argument("--our-servers", default="localhost:9092")
 
