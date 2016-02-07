@@ -29,6 +29,12 @@ validated = Counter('validated', 'RPKI or route objects validated')
 relation = Counter('relation', 'aut-num org or mnt relation')
 connected = Counter('connected', 'same path')
 caida_relation = Counter('caida_relation', 'somehow related')
+caida_private = Counter('caida_private', 'somehow related')
+caida_as2org = Counter('caida_as2org', 'somehow related')
+caida_cone = Counter('caida_cone', 'somehow related')
+caida_as2rel = Counter('caida_as2rel', 'somehow related')
+white_list = Counter('white_list', 'somehow related')
+
 abnormal = Counter('abnormal', 'no classification')
 total_events = Counter("total_events", "all events")
 
@@ -154,6 +160,8 @@ if __name__ == "__main__":
     parser.add_argument("--as-rel-file",
                         help="TXT file containing AS relation")
     parser.add_argument("--ppdc-ases-file")
+    parser.add_argument("--as2org-file",
+                        help="TXT file containing AS to organizations")
 
     args = parser.parse_args()
 
@@ -180,9 +188,9 @@ if __name__ == "__main__":
         fill_relation_struct(args.irr_mnt_file, relations_dict, "maintainers")
         funcs.append(partial(annotate_if_relation, relations_dict))
 
-    if args.as_rel_file is not None and args.ppdc_ases_file is not None:
-        a, b, c = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file)
-        funcs.append(partial(is_legittimate, a, b, c))
+    if args.as_rel_file is not None and args.ppdc_ases_file is not None and args.as2org_file is not None:
+        a, b,c,d = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file, args.as2org_file)
+        funcs.append(partial(is_legittimate, a, b, c,d))
 
     if args.from_timestamp is None:
         consumer = KafkaConsumer("conflicts",
@@ -224,10 +232,22 @@ if __name__ == "__main__":
         if "direct" in msg:
             connected.inc()
             filter_out = True
+        if msg.get("caida_private", False) is True:
+            caida_private.inc()
+            filter_out = True
+            white_list.inc()
+        if msg.get("caida_as2org", False) is True:
+            caida_as2org.inc()
+            filter_out = True
+            white_list.inc()
         if msg.get("caida_relation", False) is True:
             caida_relation.inc()
             filter_out = True
-
+            white_list.inc()
+        if msg.get("caida_cone", False) is True:
+            caida_cone.inc()
+            filter_out = True
+            white_list.inc()
         if filter_out:
             continue
         else:

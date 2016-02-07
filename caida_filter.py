@@ -16,11 +16,13 @@ PARTITIONS = {
 
 
 
-def caida_filter_annaunce(relation_name,cone_name):
+def caida_filter_annaunce(relation_name,cone_name,as_organizations):
+
 
     relations = {}
     childs = {}
     parents = {}
+    sib_dict={}
 
     fin = open(relation_name,"r");
     
@@ -61,28 +63,67 @@ def caida_filter_annaunce(relation_name,cone_name):
             notn=1;
                     
             
-    return relations,childs,parents
+    file=open(as_organizations,'r')
+    lines=file.readlines()
+    
+    for line in lines:
+        if "#" in line:
+            continue
+        toks=line.split('|')
+        if len(toks) !=5:
+            continue
+        if not toks[0].isdigit():
+            continue
+        asn=int(toks[0])
+        org=toks[-2]
+        sib_dict[asn]=org
+            
+    return relations,childs,parents,sib_dict
 
-def is_legittimate(relations,childs,parents, data):
+def is_legittimate(relations,childs,parents,sib_dict, data):
 
     p1=int(data["announce"]["asn"])
     p2=int(data["conflict_with"]["asn"])
     legittimate=0
-    
-    if(p1 in relations and p2 in relations[p1]): legittimate=1
-    if(p2 in relations and p1 in relations[p2]): legittimate=1
+
+
+    if(p1>=64297 and p1<=65534 or p1>=4200000000 and p1<4294967295): 
+        legittimate=1
+        data["caida_private"] = bool(legittimate)
+        return legittimate
+    if(p2>=64297 and p2<=65534 or p2>=4200000000 and p2<4294967295): 
+        legittimate=1
+        data["caida_private"] = bool(legittimate)
+        return legittimate
+
+   if asn1  in sib_dict and asn2  in sib_dict:
+       if sib_dict[asn1]==sib_dict[asn2]:
+            legittimate=1
+            data["caida_as2org"] = bool(legittimate)
+            return legittimate
+
+    if(p1 in relations and p2 in relations[p1]): 
+            legittimate=1
+            data["caida_relation"] = bool(legittimate)
+            return legittimate
+
+    if(p2 in relations and p1 in relations[p2]): 
+            legittimate=1
+            data["caida_relation"] = bool(legittimate)
+            return legittimate
     
     if(p1 in childs): #if p1 has a parent means that it is a child
-        if(p2 in childs[p1]): legittimate=1
-    
+        if(p2 in childs[p1]): 
+            legittimate=1
+            data["caida_cone"] = bool(legittimate)
+            return legittimate
+
     if(p2 in childs):
-        if(p1 in childs[p2]): legittimate=1
+        if(p1 in childs[p2]):             
+            legittimate=1
+            data["caida_cone"] = bool(legittimate)
+            return legittimate
 
-
-    if(p1>=64297 and p1<=65534 or p1>=4200000000 and p1<4294967295): legittimate=1
-    if(p2>=64297 and p2<=65534 or p2>=4200000000 and p2<4294967295): legittimate=1
-        
-    data["caida_relation"] = bool(legittimate)
     return legittimate
 
 if __name__ == "__main__":
