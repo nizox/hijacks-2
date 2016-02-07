@@ -23,7 +23,11 @@ from kafka.consumer import KafkaConsumer
 from kafka.protocol import create_message
 from kafka.common import ProduceRequest
 
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, Gauge, start_http_server
+
+
+events_latency = Gauge("events_latency", "BGP event detection latency", ["collector", "peer_as"])
+
 
 validated = Counter('validated', 'RPKI or route objects validated')
 relation = Counter('relation', 'aut-num org or mnt relation')
@@ -217,6 +221,8 @@ if __name__ == "__main__":
         ts = msg.get("timestamp", 0)
         if last_ts is not None and ts <= last_ts:
             continue
+
+        events_latency.labels(args.collector, str(msg["peer_as"])).set((datetime.utcnow() - datetime.utcfromtimestamp(ts)).seconds)
 
         for enrich_func in funcs:
             enrich_func(msg)
