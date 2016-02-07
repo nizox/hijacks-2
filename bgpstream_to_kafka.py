@@ -16,7 +16,13 @@ from kafka.protocol import create_message
 
 from _pybgpstream import BGPStream, BGPRecord
 
+from prometheus_client import Counter, Gauge, start_http_server
+
 logger = logging.getLogger(__name__)
+
+
+raw_bgp_messages = Counter("raw_bgp_messages", "all the BGP messages", ["collector", "peer_as"])
+latency = Gauge("latency", "BGP peers latency", ["collector", "peer_as"])
 
 
 def group_by_n(it, n):
@@ -30,6 +36,8 @@ def group_by_n(it, n):
 
 
 def bgpstream_format(collector, elem):
+    raw_bgp_messages.labels(collector, str(elem.peer_asn)).inc()
+    latency.labels(collector, str(elem.peer_asn)).set(time.time() - float(elem.time))
     if elem.type == "R" or elem.type == "A":
         as_path = elem.fields["as-path"]
         if len(as_path) > 0:
@@ -84,6 +92,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
+
+    start_http_server(4344)
 
     save_file = "ts-{}".format(args.collector)
 
