@@ -122,6 +122,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("collector")
+    parser.add_argument("--from-timestamp", type=float)
     parser.add_argument("--irr-ro-file",
                         help="CSV file containing IRR route objects")
     parser.add_argument("--irr-mnt-file",
@@ -151,5 +152,7 @@ if __name__ == "__main__":
 
     client = KafkaClient("localhost:9092")
     for msg in detect_hijacks(**kwargs):
-        if msg.get("type", "none") == "ABNORMAL":
-            client.send_produce_request([ProduceRequest("hijacks", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
+        ts = msg.get("timestamp", 0)
+        if args.from_timestamp is None or ts > args.from_timestamp:
+            if msg.get("type", "none") == "ABNORMAL":
+                client.send_produce_request([ProduceRequest("hijacks", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
