@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    consumer = KafkaConsumer("hijacks",
+    consumer = KafkaConsumer("conflicts",
                              bootstrap_servers=["comet-17-08.sdsc.edu:9092", "comet-17-03.sdsc.edu:9092", "comet-17-22.sdsc.edu:9092"],
                              group_id="client")
     if args.offset is not None:
