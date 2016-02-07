@@ -12,6 +12,7 @@ PARTITIONS = {
     "rrc19": 1,
     "rrc20": 2,
     "rrc21": 3,
+    "caida-bmp": 4,
 }
 
 
@@ -96,8 +97,8 @@ def is_legittimate(relations,childs,parents,sib_dict, data):
         data["caida_private"] = bool(legittimate)
         return legittimate
 
-   if asn1  in sib_dict and asn2  in sib_dict:
-       if sib_dict[asn1]==sib_dict[asn2]:
+    if p1 in sib_dict and p2 in sib_dict:
+       if sib_dict[p1]==sib_dict[p2]:
             legittimate=1
             data["caida_as2org"] = bool(legittimate)
             return legittimate
