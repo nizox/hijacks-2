@@ -4,6 +4,7 @@ import os
 import json
 import cPickle
 import logging
+import time
 
 from tabi.core import InternalMessage
 
@@ -11,6 +12,13 @@ from kafka.consumer import KafkaConsumer
 from kafka import KafkaClient
 from kafka.common import ProduceRequest
 from kafka.protocol import create_message
+
+from prometheus_client import Counter, Gauge, start_http_server
+
+
+raw_bgp_messages = Counter("raw_bgp_messages", "all the BGP messages", ["collector", "peer_as"])
+latency = Gauge("latency", "BGP peers latency", ["collector", "peer_as"])
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +47,8 @@ def exabgp_as_path(as_path):
 
 def exabgp_format(collector, message):
     neighbor = message["neighbor"]
+    raw_bgp_messages.labels(collector, str(neighbor["asn"]["peer"])).inc()
+    latency.labels(collector, str(neighbor["asn"]["peer"])).set(time.time() - float(message["time"]))
     update = neighbor["message"].get("update")
     if update is not None:
         announce = update.get("announce")
@@ -105,6 +115,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
+
+    for i in range(10):
+        try:
+            start_http_server(4340 + i)
+            logger.info("loading the stats server on %s", 4340 + i)
+            break
+        except:
+            continue
 
     consumer = KafkaConsumer("raw-{}".format(args.collector),
                              group_id='test_hackathon10',
