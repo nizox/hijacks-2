@@ -9,14 +9,14 @@ from tabi.rib import Radix
 logger = logging.getLogger(__name__)
 
 
-COLLECTORS=["rrc18", "rrc19", "rrc20", "rrc21"]
+COLLECTORS=["rrc18", "rrc19", "rrc20", "rrc21", "caida-bmp"]
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="get a feed ofannounces from a BGP collector")
-    parser.add_argument("collector", nargs="+", default=COLLECTORS)
+    parser.add_argument("collector", nargs="*")
     parser.add_argument("--offset", type=int)
     parser.add_argument("--prefixes-file")
     parser.add_argument("--our-servers", default=",".join(["comet-17-22.sdsc.edu:9092"]))
@@ -25,7 +25,10 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    topics = ["rib-{}".format(c) for c in args.collector]
+    if args.collector is not None:
+        topics = ["rib-{}".format(c) for c in args.collector]
+    else:
+        topics = ["rib-{}".format(c) for c in COLLECTORS]
 
     consumer = KafkaConsumer(*topics,
                              bootstrap_servers=args.our_servers.split(","),
@@ -44,7 +47,7 @@ if __name__ == "__main__":
                 filter_prefixes.add(prefix.strip())
 
         def func(data):
-            return data["prefix"] in filter_prefixes
+            return len(list(filter_prefixes.search_covering(data["prefix"]))) > 0
         logger.info("filtering on prefixes from the file %s", args.prefixes_file)
         filters.append(func)
 
