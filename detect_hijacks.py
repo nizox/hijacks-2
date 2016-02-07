@@ -215,6 +215,8 @@ if __name__ == "__main__":
             enrich_func(msg)
 
         all_events.labels(args.collector, "valid" in msg, "relation" in msg, "direct" in msg, msg.get("caida_relation", False) is True, msg.get("caida_private", False) is True, msg.get("caida_as2org", False) is True, msg.get("caida_cone", False) is True, msg.get("caida_as2rel", False) is True).inc()
+
+        filter_out = False
         # skip these events that are probably legitimate
         if "valid" in msg:
             filter_out = True
