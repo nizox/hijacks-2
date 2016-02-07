@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
     if args.as_rel_file is not None and args.ppdc_ases_file is not None:
         a, b, c = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file)
-        funcs.append(is_legittimate, a, b, c)
+        funcs.append(partial(is_legittimate, a, b, c))
 
     if args.from_timestamp is None:
         consumer = KafkaConsumer("conflicts",
