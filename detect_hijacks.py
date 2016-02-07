@@ -27,20 +27,7 @@ from prometheus_client import Counter, Gauge, start_http_server
 
 
 events_latency = Gauge("events_latency", "BGP event detection latency", ["collector", "peer_as"])
-
-
-validated = Counter('validated', 'RPKI or route objects validated')
-relation = Counter('relation', 'aut-num org or mnt relation')
-connected = Counter('connected', 'same path')
-caida_relation = Counter('caida_relation', 'somehow related')
-caida_private = Counter('caida_private', 'somehow related')
-caida_as2org = Counter('caida_as2org', 'somehow related')
-caida_cone = Counter('caida_cone', 'somehow related')
-caida_as2rel = Counter('caida_as2rel', 'somehow related')
-white_list = Counter('white_list', 'somehow related')
-
-abnormal = Counter('abnormal', 'no classification')
-total_events = Counter("total_events", "all events")
+all_events = Counter("all_events", "BGP conflicts events", ["collector", "validated", "relation", "connected", "caida_relation", "caida_private", "caida_as2org", "caida_cone", "caida_as2rel"])
 
 logger = logging.getLogger()
 
@@ -227,40 +214,26 @@ if __name__ == "__main__":
         for enrich_func in funcs:
             enrich_func(msg)
 
-        total_events.inc()
-        filter_out = False
+        all_events.labels(args.collector, "valid" in msg, "relation" in msg, "direct" in msg, msg.get("caida_relation", False) is True, msg.get("caida_private", False) is True, msg.get("caida_as2org", False) is True, msg.get("caida_cone", False) is True, msg.get("caida_as2rel", False) is True).inc()
         # skip these events that are probably legitimate
         if "valid" in msg:
-            validated.inc()
             filter_out = True
-            white_list.inc()
         if "relation" in msg:
-            relation.inc()
             filter_out = True
-            white_list.inc()
         if "direct" in msg:
-            connected.inc()
             filter_out = True
-            white_list.inc()
         if msg.get("caida_private", False) is True:
-            caida_private.inc()
             filter_out = True
-            white_list.inc()
         if msg.get("caida_as2org", False) is True:
-            caida_as2org.inc()
             filter_out = True
-            white_list.inc()
         if msg.get("caida_relation", False) is True:
-            caida_relation.inc()
             filter_out = True
-            white_list.inc()
         if msg.get("caida_cone", False) is True:
-            caida_cone.inc()
             filter_out = True
-            white_list.inc()
+        if msg.get("caida_as2rel", False) is True:
+            filter_out = True
+
         if filter_out:
             continue
-        else:
-            abnormal.inc()
 
         client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
