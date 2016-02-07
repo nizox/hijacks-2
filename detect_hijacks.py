@@ -3,6 +3,8 @@ import os
 import json
 import logging
 
+from datetime import datetime
+
 from tabi.core import InternalMessage
 from tabi.helpers import get_as_origin
 from tabi.rib import EmulatedRIB
@@ -151,9 +153,25 @@ if __name__ == "__main__":
     if args.irr_mnt_file is not None:
         kwargs["irr_mnt_file"] = args.irr_mnt_file
 
+    if args.from_timestamp is None:
+        consumer = KafkaConsumer("conflicts",
+                                 metadata_broker_list=args.our_servers.split(","),
+                                 group_id="detector",
+                                 auto_commit_enable=False)
+        offset, = consumer.get_partition_offsets("conflicts", PARTITIONS[args.collector], -1, 1)
+        consumer.set_topic_partitions({("conflicts", PARTITIONS[args.collector]): offset - 1})
+        last_message = next(iter(consumer))
+        last_data = json.loads(last_message.value)
+        last_ts = last_data["timestamp"]
+        logger.info("last detected event was at offset %s timestamp %s", offset, last_ts)
+    else:
+        last_ts = args.from_timestamp
+
+    logger.info("detecting conflicts newer than %s", datetime.utcfromtimestamp(last_ts))
+
     client = KafkaClient(args.our_servers.split(","))
     for msg in detect_hijacks(**kwargs):
         ts = msg.get("timestamp", 0)
-        if args.from_timestamp is None or ts > args.from_timestamp:
+        if last_ts is None or ts > last_ts:
             if msg.get("type", "none") == "ABNORMAL":
                 client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
