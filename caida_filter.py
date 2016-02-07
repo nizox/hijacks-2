@@ -81,7 +81,11 @@ def caida_filter_annaunce(relation_name,cone_name,as_organizations):
             
     return relations,childs,parents,sib_dict
 
+
 def is_legittimate(relations,childs,parents,sib_dict, data):
+
+    if "announce" not in data:
+        return 1
 
     p1=int(data["announce"]["asn"])
     p2=int(data["conflict_with"]["asn"])
