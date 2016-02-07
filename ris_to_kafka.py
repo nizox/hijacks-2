@@ -105,10 +105,13 @@ if __name__ == "__main__":
     topics = [("raw-{}".format(collector), i, 0) for i in range(0, 10)]
     consumer.set_topic_partitions(*topics)
 
-    client = KafkaClient("localhost:9092")
+    #client = KafkaClient("localhost:9092")
     count = 0
     for batch in group_by_n(messages_from_internal(iterate_messages(consumer, collector)), 1000):
+        offsets = consumer.offsets()
+        for (topic, partition), offset in offsets["fetch"]:
+            print(topic, partition, offset)
         req = ProduceRequest("rib-{}".format(collector), 0, batch)
         logger.info("sending %i", count)
-        res = client.send_produce_request([req])
+        #res = client.send_produce_request([req])
         count += 1000
