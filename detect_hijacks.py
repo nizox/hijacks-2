@@ -227,12 +227,15 @@ if __name__ == "__main__":
         if "valid" in msg:
             validated.inc()
             filter_out = True
+            white_list.inc()
         if "relation" in msg:
             relation.inc()
             filter_out = True
+            white_list.inc()
         if "direct" in msg:
             connected.inc()
             filter_out = True
+            white_list.inc()
         if msg.get("caida_private", False) is True:
             caida_private.inc()
             filter_out = True
