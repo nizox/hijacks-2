@@ -212,6 +212,7 @@ if __name__ == "__main__":
         for enrich_func in funcs:
             enrich_func(msg)
 
+        total_events.inc()
         # skip these events that are probably legitimate
         if "valid" in msg:
             validated.inc()
@@ -227,6 +228,5 @@ if __name__ == "__main__":
             continue
         else:
             abnormal.inc()
-        total_events.inc()
 
         client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
