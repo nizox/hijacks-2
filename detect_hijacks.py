@@ -213,18 +213,22 @@ if __name__ == "__main__":
             enrich_func(msg)
 
         total_events.inc()
+        filter_out = False
         # skip these events that are probably legitimate
         if "valid" in msg:
             validated.inc()
-            continue
-        elif "relation" in msg:
+            filter_out = True
+        if "relation" in msg:
             relation.inc()
-            continue
-        elif "direct" in msg:
+            filter_out = True
+        if "direct" in msg:
             connected.inc()
-            continue
-        elif msg.get("caida_relation", False) is True:
+            filter_out = True
+        if msg.get("caida_relation", False) is True:
             caida_relation.inc()
+            filter_out = True
+
+        if filter_out:
             continue
         else:
             abnormal.inc()
