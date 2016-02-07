@@ -63,9 +63,8 @@ def caida_filter_annaunce(relation_name,cone_name):
             
     return relations,childs,parents
 
-def is_legittimate(item,relations,childs,parents):
+def is_legittimate(relations,childs,parents, data):
 
-    data=json.loads(item.value)
     p1=int(data["announce"]["asn"])
     p2=int(data["conflict_with"]["asn"])
     legittimate=0
@@ -81,6 +80,7 @@ def is_legittimate(item,relations,childs,parents):
         for p in parents[p2]:
             if(p1 in childs[p]): legittimate=1
 
+    data["caida_relation"] = bool(legittimate)
     return legittimate
 
 if __name__ == "__main__":
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     total=0
     for item in consumer:
         total+=1     
-        if(is_legittimate(item,relations,childs,parents)==0): 
+        if(is_legittimate(relations,childs,parents, json.loads(item.value))==0): 
             hijacks+=1 
             #print(item.value)
             

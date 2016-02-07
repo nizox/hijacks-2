@@ -3,12 +3,21 @@ import os
 import json
 import logging
 
+from functools import partial
 from datetime import datetime
+from collections import defaultdict
+
+
+from .caida_filter import caida_filter_annaunce, is_legittimate
+
 
 from tabi.core import InternalMessage
 from tabi.helpers import get_as_origin
-from tabi.rib import EmulatedRIB
-from tabi.emulator import detect_hijacks
+from tabi.rib import EmulatedRIB, Radix
+from tabi.emulator import detect_conflicts
+from tabi.annotate import annotate_if_relation, annotate_if_route_objects, \
+    annotate_if_roa, annotate_if_direct, annotate_with_type, \
+    fill_relation_struct, fill_ro_struct, fill_roa_struct
 
 from kafka import KafkaClient
 from kafka.consumer import KafkaConsumer
@@ -134,6 +143,9 @@ if __name__ == "__main__":
                         help="CSV file containing IRR organisation objects")
     parser.add_argument("--rpki-roa-file",
                         help="CSV file containing ROA")
+    parser.add_argument("--as-rel-file",
+                        help="TXT file containing AS relation")
+    parser.add_argument("--ppdc-ases-file")
 
     args = parser.parse_args()
 
@@ -141,17 +153,70 @@ if __name__ == "__main__":
 
     kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
 
+    logger.info("loading metadata...")
+    funcs = [annotate_if_direct]
     if args.irr_ro_file is not None:
-        kwargs["irr_ro_file"] = args.irr_ro_file
+        ro_rad_tree = Radix()
+        fill_ro_struct(args.irr_ro_file, ro_rad_tree)
+        funcs.append(partial(annotate_if_route_objects, ro_rad_tree))
 
     if args.rpki_roa_file is not None:
-        kwargs["rpki_roa_file"] = args.rpki_roa_file
+        roa_rad_tree = Radix()
+        fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
+        funcs.append(partial(annotate_if_roa, ro_rad_tree))
 
-    if args.irr_org_file is not None:
-        kwargs["irr_org_file"] = args.irr_org_file
+    if args.irr_org_file is not None and args.irr_mrt_file:
+        relations_dict = dict()
 
-    if args.irr_mnt_file is not None:
-        kwargs["irr_mnt_file"] = args.irr_mnt_file
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
+    kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
+
+    logger.info("loading metadata...")
+    funcs = [annotate_if_direct]
+    if args.irr_ro_file is not None:
+        ro_rad_tree = Radix()
+        fill_ro_struct(args.irr_ro_file, ro_rad_tree)
+        funcs.append(partial(annotate_if_route_objects, ro_rad_tree))
+
+    if args.rpki_roa_file is not None:
+        roa_rad_tree = Radix()
+        fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
+        funcs.append(partial(annotate_if_roa, ro_rad_tree))
+
+    if args.irr_org_file is not None and args.irr_mrt_file:
+        relations_dict = dict()
+
+    if args.as_rel_file is not None and args.ppdc_ases_file is not None:
+        a, b, c = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file)
+        funcs.append(is_legittimate, a, b, c)
+
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
+    kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
+
+    logger.info("loading metadata...")
+    funcs = [annotate_if_direct]
+    if args.irr_ro_file is not None:
+        ro_rad_tree = Radix()
+        fill_ro_struct(args.irr_ro_file, ro_rad_tree)
+        funcs.append(partial(annotate_if_route_objects, ro_rad_tree))
+
+    if args.rpki_roa_file is not None:
+        roa_rad_tree = Radix()
+        fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
+        funcs.append(partial(annotate_if_roa, ro_rad_tree))
+
+    if args.irr_org_file is not None and args.irr_mrt_file:
+        relations_dict = dict()
+        fill_relation_struct(args.irr_org_file, relations_dict,
+                             "organisations")
+        fill_relation_struct(args.irr_mnt_file, relations_dict, "maintainers")
+        funcs.append(partial(annotate_if_relation, relations_dict))
 
     if args.from_timestamp is None:
         consumer = KafkaConsumer("conflicts",
@@ -170,8 +235,29 @@ if __name__ == "__main__":
     logger.info("detecting conflicts newer than %s", datetime.utcfromtimestamp(last_ts))
 
     client = KafkaClient(args.our_servers.split(","))
-    for msg in detect_hijacks(**kwargs):
+    stats = defaultdict(int)
+    for msg in detect_conflicts(**kwargs):
         ts = msg.get("timestamp", 0)
-        if last_ts is None or ts > last_ts:
-            if msg.get("type", "none") == "ABNORMAL":
-                client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
+        if last_ts is not None and ts <= last_ts:
+            continue
+
+        for enrich_func in funcs:
+            enrich_func(msg)
+
+        # skip these events that are probably legitimate
+        if "valid" in msg:
+            stats["validated"] += 1
+            continue
+        elif "relation" in msg:
+            stats["relation"] += 1
+            continue
+        elif "direct" in msg:
+            stats["direct"] += 1
+            continue
+        elif msg.get("caida_relation", False) is True:
+            stats["caida_relation"] += 1
+            continue
+        else:
+            stats["abnormal"] += 1
+
+        client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
