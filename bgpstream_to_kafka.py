@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 import logging
 
 from datetime import datetime
@@ -92,8 +93,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    start_http_server(4344)
-
     save_file = "ts-{}".format(args.collector)
 
     stream = BGPStream()
@@ -106,11 +105,11 @@ if __name__ == "__main__":
         logger.info("loading timestamp from file: %s", datetime.utcfromtimestamp(last_ts))
     else:
         # Consider RIBs dumps only
-        stream.add_filter('record-type', 'ribs')
         now = time.time()
         last_ts = int(now - now % 3600)
         logger.info("loading from: %s", datetime.utcfromtimestamp(last_ts))
 
+    stream.add_filter('record-type', 'ribs')
     stream.add_filter('record-type', 'updates')
 
     stream.add_interval_filter(last_ts, 0)
