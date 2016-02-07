@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import json
+import cPickle
 import logging
 
 from tabi.core import InternalMessage
@@ -93,25 +95,46 @@ def iterate_messages(consumer, collector):
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("collector")
+    parser.add_argument("--from-beginning")
+
+    args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
 
     collector = sys.argv[1]
 
-    consumer = KafkaConsumer("raw-{}".format(collector),
-                             group_id='test_hackathon9',
+    consumer = KafkaConsumer("raw-{}".format(args.collector),
+                             group_id='test_hackathon10',
                              bootstrap_servers=RIPE_SERVERS)
 
-    topics = [("raw-{}".format(collector), i, 0) for i in range(0, 10)]
-    consumer.set_topic_partitions(*topics)
+    save_file = "offsets-{}".format(args.collector)
+    if args.from_beginning:
+        logger.info("starting from scratch")
+        offsets = {("raw-{}".format(args.collector), i): 0 for i in range(0, 10)}
+        consumer.set_topic_partitions(offsets)
+    elif os.path.exists(save_file):
+        with open(save_file, "r") as f:
+            offsets = cPickle.load(f)
+        logger.info("loading offsets from file: %s", offsets)
+        consumer.set_topic_partitions(offsets)
+    else:
+        logger.info("starting from last messages")
 
-    #client = KafkaClient("localhost:9092")
+    client = KafkaClient("localhost:9092")
     count = 0
     for batch in group_by_n(messages_from_internal(iterate_messages(consumer, collector)), 1000):
-        offsets = consumer.offsets()
-        for (topic, partition), offset in offsets["fetch"]:
-            print(topic, partition, offset)
         req = ProduceRequest("rib-{}".format(collector), 0, batch)
+        count += len(batch)
         logger.info("sending %i", count)
-        #res = client.send_produce_request([req])
-        count += 1000
+        res = client.send_produce_request([req])
+        offsets = consumer.offsets("fetch")
+        try:
+            with open(save_file, "w") as f:
+                f.write(cPickle.dumps(offsets))
+        except:
+            logger.warning("could not write offsets to %s", save_file)
+            pass
