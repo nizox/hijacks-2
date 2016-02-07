@@ -52,6 +52,8 @@ if __name__ == "__main__":
         filters.append(func)
 
     for item in consumer:
+        if item.value is None:
+            continue
         data = json.loads(item.value)
         if len(filters) == 0 or any(f(data) for f in filters):
             print(data)
