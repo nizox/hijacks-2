@@ -59,7 +59,7 @@ def exabgp_as_path(as_path):
 def exabgp_format(collector, message):
     neighbor = message["neighbor"]
     raw_bgp_messages.labels(collector, str(neighbor["asn"]["peer"])).inc()
-    latency.labels(collector, str(neighbor["asn"]["peer"])).set((datetime.utcnow() - datetime.utcfromtimestamp(message["time"])).seconds)
+    latency.labels(collector, str(neighbor["asn"]["peer"])).set((datetime.utcnow() - datetime.utcfromtimestamp(message["time"])).seconds())
     update = neighbor["message"].get("update")
     if update is not None:
         announce = update.get("announce")
