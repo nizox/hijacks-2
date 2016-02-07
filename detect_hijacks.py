@@ -8,7 +8,7 @@ from datetime import datetime
 from collections import defaultdict
 
 
-from .caida_filter import caida_filter_annaunce, is_legittimate
+from caida_filter import caida_filter_annaunce, is_legittimate
 
 
 from tabi.core import InternalMessage
@@ -165,58 +165,16 @@ if __name__ == "__main__":
         fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
         funcs.append(partial(annotate_if_roa, ro_rad_tree))
 
-    if args.irr_org_file is not None and args.irr_mrt_file:
-        relations_dict = dict()
-
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO)
-
-    kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
-
-    logger.info("loading metadata...")
-    funcs = [annotate_if_direct]
-    if args.irr_ro_file is not None:
-        ro_rad_tree = Radix()
-        fill_ro_struct(args.irr_ro_file, ro_rad_tree)
-        funcs.append(partial(annotate_if_route_objects, ro_rad_tree))
-
-    if args.rpki_roa_file is not None:
-        roa_rad_tree = Radix()
-        fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
-        funcs.append(partial(annotate_if_roa, ro_rad_tree))
-
-    if args.irr_org_file is not None and args.irr_mrt_file:
-        relations_dict = dict()
-
-    if args.as_rel_file is not None and args.ppdc_ases_file is not None:
-        a, b, c = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file)
-        funcs.append(is_legittimate, a, b, c)
-
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO)
-
-    kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
-
-    logger.info("loading metadata...")
-    funcs = [annotate_if_direct]
-    if args.irr_ro_file is not None:
-        ro_rad_tree = Radix()
-        fill_ro_struct(args.irr_ro_file, ro_rad_tree)
-        funcs.append(partial(annotate_if_route_objects, ro_rad_tree))
-
-    if args.rpki_roa_file is not None:
-        roa_rad_tree = Radix()
-        fill_roa_struct(args.rpki_roa_file, roa_rad_tree)
-        funcs.append(partial(annotate_if_roa, ro_rad_tree))
-
-    if args.irr_org_file is not None and args.irr_mrt_file:
+    if args.irr_org_file is not None and args.irr_mnt_file:
         relations_dict = dict()
         fill_relation_struct(args.irr_org_file, relations_dict,
                              "organisations")
         fill_relation_struct(args.irr_mnt_file, relations_dict, "maintainers")
         funcs.append(partial(annotate_if_relation, relations_dict))
+
+    if args.as_rel_file is not None and args.ppdc_ases_file is not None:
+        a, b, c = caida_filter_annaunce(args.as_rel_file, args.ppdc_ases_file)
+        funcs.append(is_legittimate, a, b, c)
 
     if args.from_timestamp is None:
         consumer = KafkaConsumer("conflicts",
