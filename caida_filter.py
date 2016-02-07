@@ -77,6 +77,10 @@ def is_legittimate(relations,childs,parents, data):
     
     if(p2 in childs):
         if(p1 in childs[p2]): legittimate=1
+
+
+    if(p1>64511 and p1<65535 or p1>=4200000000 and p1<4294967295): legittimate=1
+    if(p2>64511 and p2<65535 or p2>=4200000000 and p2<4294967295): legittimate=1
         
     data["caida_relation"] = bool(legittimate)
     return legittimate
