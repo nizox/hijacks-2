@@ -123,6 +123,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("collector")
     parser.add_argument("--from-timestamp", type=float)
+    parser.add_argument("--our-servers", default="localhost:9092")
     parser.add_argument("--irr-ro-file",
                         help="CSV file containing IRR route objects")
     parser.add_argument("--irr-mnt-file",
@@ -136,7 +137,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    kwargs = kafka_input(args.collector, broker=["localhost:9092"])
+    kwargs = kafka_input(args.collector, broker=args.our_servers.split(","))
 
     if args.irr_ro_file is not None:
         kwargs["irr_ro_file"] = args.irr_ro_file
@@ -150,9 +151,9 @@ if __name__ == "__main__":
     if args.irr_mnt_file is not None:
         kwargs["irr_mnt_file"] = args.irr_mnt_file
 
-    client = KafkaClient("localhost:9092")
+    client = KafkaClient(args.our_servers.split(","))
     for msg in detect_hijacks(**kwargs):
         ts = msg.get("timestamp", 0)
         if args.from_timestamp is None or ts > args.from_timestamp:
             if msg.get("type", "none") == "ABNORMAL":
-                client.send_produce_request([ProduceRequest("hijacks", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
+                client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])

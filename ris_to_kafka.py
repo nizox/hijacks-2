@@ -132,6 +132,7 @@ if __name__ == "__main__":
         res = client.send_produce_request([req])
         offsets = consumer.offsets("fetch")
         try:
+            # this is a bit buggy but it will do for now
             with open(save_file, "w") as f:
                 f.write(cPickle.dumps(offsets))
         except:
