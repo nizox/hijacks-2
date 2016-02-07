@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import json
 import cPickle
 import logging
@@ -107,8 +106,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    collector = sys.argv[1]
-
     consumer = KafkaConsumer("raw-{}".format(args.collector),
                              group_id='test_hackathon10',
                              bootstrap_servers=args.ripe_servers.split(","))
@@ -128,8 +125,8 @@ if __name__ == "__main__":
 
     client = KafkaClient(args.our_servers.split(","))
     count = 0
-    for batch in group_by_n(messages_from_internal(iterate_messages(consumer, collector)), 1000):
-        req = ProduceRequest("rib-{}".format(collector), 0, batch)
+    for batch in group_by_n(messages_from_internal(iterate_messages(consumer, args.collector)), 1000):
+        req = ProduceRequest("rib-{}".format(args.collector), 0, batch)
         count += len(batch)
         logger.info("sending %i", count)
         res = client.send_produce_request([req])
