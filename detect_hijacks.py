@@ -80,7 +80,7 @@ class KafkaInputBview(object):
         # go to the tail of the log, we should get all prefixes from there
         self.consumer.set_topic_partitions(("rib-{}".format(self.collector), 0, 0))
 
-        logger.info("consumer from the start to construct bview")
+        logger.info("consuming from the start to build bview")
         for data in kafka_iter(self.consumer):
             # kafka internal message used to represent that a key was deleted
             if data is None:

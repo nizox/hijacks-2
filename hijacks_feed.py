@@ -29,10 +29,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     consumer = KafkaConsumer("hijacks",
-                             bootstrap_servers=["comet-17-08.sdsc.edu:9092"],
+                             bootstrap_servers=["comet-17-08.sdsc.edu:9092", "comet-17-03.sdsc.edu:9092", "comet-17-22.sdsc.edu:9092"],
                              group_id="client")
     if args.offset is not None:
-        topics = [("hijacks", i, args.offset) for i in PARTITIONS.values()]
+        topics = [("conflicts", i, args.offset) for i in PARTITIONS.values()]
         consumer.set_topic_partitions(*topics)
 
     # setup filters
