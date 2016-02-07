@@ -140,7 +140,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("collector")
     parser.add_argument("--from-timestamp", type=float)
-    parser.add_argument("--our-servers", default="localhost:9092")
+    parser.add_argument("--our-servers", default=",".join(["comet-17-11.sdsc.edu:9092", "comet-17-22.sdsc.edu:9092", "comet-17-26.sdsc.edu:9092"]))
     parser.add_argument("--irr-ro-file",
                         help="CSV file containing IRR route objects")
     parser.add_argument("--irr-mnt-file",

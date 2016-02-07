@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("collector", nargs="*")
     parser.add_argument("--offset", type=int)
     parser.add_argument("--prefixes-file")
-    parser.add_argument("--our-servers", default=",".join(["comet-17-22.sdsc.edu:9092"]))
+    parser.add_argument("--our-servers", default=",".join(["comet-17-11.sdsc.edu:9092", "comet-17-22.sdsc.edu:9092", "comet-17-26.sdsc.edu:9092"]))
 
     args = parser.parse_args()
 
