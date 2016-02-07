@@ -100,6 +100,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("collector")
     parser.add_argument("--from-beginning")
+    parser.add_argument("--ripe-servers", default=",".join(RIPE_SERVERS))
+    parser.add_argument("--our-servers", default="localhost:9092")
 
     args = parser.parse_args()
 
@@ -109,7 +111,7 @@ if __name__ == "__main__":
 
     consumer = KafkaConsumer("raw-{}".format(args.collector),
                              group_id='test_hackathon10',
-                             bootstrap_servers=RIPE_SERVERS)
+                             bootstrap_servers=args.ripe_servers.split(","))
 
     save_file = "offsets-{}".format(args.collector)
     if args.from_beginning:
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     else:
         logger.info("starting from last messages")
 
-    client = KafkaClient("localhost:9092")
+    client = KafkaClient(args.our_servers.split(","))
     count = 0
     for batch in group_by_n(messages_from_internal(iterate_messages(consumer, collector)), 1000):
         req = ProduceRequest("rib-{}".format(collector), 0, batch)
