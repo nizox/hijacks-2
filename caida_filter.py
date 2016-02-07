@@ -72,14 +72,12 @@ def is_legittimate(relations,childs,parents, data):
     if(p1 in relations and p2 in relations[p1]): legittimate=1
     if(p2 in relations and p1 in relations[p2]): legittimate=1
     
-    if(p1 in parents): #if p1 has a parent means that it is a child
-        for p in parents[p1]: #for all my parents I check if p2=second child is in my parents family                
-            if(p2 in childs[p]): legittimate=1
+    if(p1 in childs): #if p1 has a parent means that it is a child
+        if(p2 in childs[p1]): legittimate=1
     
-    if(p2 in parents):
-        for p in parents[p2]:
-            if(p1 in childs[p]): legittimate=1
-
+    if(p2 in childs):
+        if(p1 in childs[p2]): legittimate=1
+        
     data["caida_relation"] = bool(legittimate)
     return legittimate
 
