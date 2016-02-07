@@ -2,7 +2,6 @@
 
 import os
 import json
-import time
 import logging
 
 from datetime import datetime
@@ -37,7 +36,7 @@ def group_by_n(it, n):
 
 def bgpstream_format(collector, elem):
     raw_bgp_messages.labels(collector, str(elem.peer_asn)).inc()
-    latency.labels(collector, str(elem.peer_asn)).set(time.time() - float(elem.time))
+    latency.labels(collector, str(elem.peer_asn)).set((datetime.utcnow() - datetime.utcfromtimestamp(elem.time)).seconds())
     if elem.type == "R" or elem.type == "A":
         as_path = elem.fields["as-path"]
         if len(as_path) > 0:

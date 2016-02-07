@@ -4,7 +4,8 @@ import os
 import json
 import cPickle
 import logging
-import time
+
+from datetime import datetime
 
 from tabi.core import InternalMessage
 
@@ -58,7 +59,7 @@ def exabgp_as_path(as_path):
 def exabgp_format(collector, message):
     neighbor = message["neighbor"]
     raw_bgp_messages.labels(collector, str(neighbor["asn"]["peer"])).inc()
-    latency.labels(collector, str(neighbor["asn"]["peer"])).set(time.time() - float(message["time"]))
+    latency.labels(collector, str(neighbor["asn"]["peer"])).set((datetime.utcnow() - datetime.utcfromtimestamp(message["time"])).seconds())
     update = neighbor["message"].get("update")
     if update is not None:
         announce = update.get("announce")
