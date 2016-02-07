@@ -14,6 +14,7 @@ PARTITIONS = {
     "rrc19": 1,
     "rrc20": 2,
     "rrc21": 3,
+    "caida-bmp": 4,
 }
 
 
