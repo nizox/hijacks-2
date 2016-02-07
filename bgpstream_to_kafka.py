@@ -15,13 +15,15 @@ from kafka.protocol import create_message
 
 from _pybgpstream import BGPStream, BGPRecord
 
-from prometheus_client import Counter, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, write_to_textfile, CollectorRegistry
 
 logger = logging.getLogger(__name__)
 
 
-raw_bgp_messages = Counter("raw_bgp_messages", "all the BGP messages", ["collector", "peer_as"])
-latency = Gauge("latency", "BGP peers latency", ["collector", "peer_as"])
+registry = CollectorRegistry()
+
+raw_bgp_messages = Counter("raw_bgp_messages", "all the BGP messages", ["collector", "peer_as"], registry=registry)
+latency = Gauge("latency", "BGP peers latency", ["collector", "peer_as"], registry=registry)
 
 
 def group_by_n(it, n):
@@ -92,8 +94,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    start_http_server(4344)
-
     save_file = "ts-{}".format(args.collector)
 
     stream = BGPStream()
@@ -135,6 +135,7 @@ if __name__ == "__main__":
             # this is a bit buggy but it will do for now
             with open(save_file, "w") as f:
                 f.write(str(last_timestamp))
+            write_to_textfile('{}.prom'.format(args.collector), registry)
         except:
             logger.warning("could not write offsets to %s", save_file)
             pass
