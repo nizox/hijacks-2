@@ -25,6 +25,16 @@ logger = logging.getLogger(__name__)
 RIPE_SERVERS = ["node{}.kafka.ris.ripe.net".format(i) for i in range(1, 6)]
 
 
+PARTITIONS = {
+    "rrc18": 0,
+    "rrc19": 1,
+    "rrc20": 2,
+    "rrc21": 3,
+}
+
+
+
+
 def group_by_n(it, n):
     acc = []
     for elem in it:
@@ -116,13 +126,8 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    for i in range(10):
-        try:
-            start_http_server(4340 + i)
-            logger.info("loading the stats server on %s", 4340 + i)
-            break
-        except:
-            continue
+    start_http_server(4340 + PARTITIONS[args.collector])
+    logger.info("loading the stats server on %s", 4340 + PARTITIONS[args.collector])
 
     consumer = KafkaConsumer("raw-{}".format(args.collector),
                              group_id='test_hackathon10',
