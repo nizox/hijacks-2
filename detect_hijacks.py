@@ -7,7 +7,6 @@ from functools import partial
 from datetime import datetime
 from collections import defaultdict
 
-
 from caida_filter import caida_filter_annaunce, is_legittimate
 
 
@@ -23,6 +22,15 @@ from kafka import KafkaClient
 from kafka.consumer import KafkaConsumer
 from kafka.protocol import create_message
 from kafka.common import ProduceRequest
+
+from prometheus_client import Counter, start_http_server
+
+validated = Counter('validated', 'RPKI or route objects validated')
+relation = Counter('relation', 'aut-num org or mnt relation')
+connected = Counter('connected', 'same path')
+caida_relation = Counter('caida_relation', 'somehow related')
+abnormal = Counter('abnormal', 'no classification')
+total_events = Counter("total_events", "all events")
 
 logger = logging.getLogger()
 
@@ -192,6 +200,8 @@ if __name__ == "__main__":
 
     logger.info("detecting conflicts newer than %s", datetime.utcfromtimestamp(last_ts))
 
+    start_http_server(4240 + PARTITIONS[args.collector])
+
     client = KafkaClient(args.our_servers.split(","))
     stats = defaultdict(int)
     for msg in detect_conflicts(**kwargs):
@@ -204,18 +214,19 @@ if __name__ == "__main__":
 
         # skip these events that are probably legitimate
         if "valid" in msg:
-            stats["validated"] += 1
+            validated.inc()
             continue
         elif "relation" in msg:
-            stats["relation"] += 1
+            relation.inc()
             continue
         elif "direct" in msg:
-            stats["direct"] += 1
+            connected.inc()
             continue
         elif msg.get("caida_relation", False) is True:
-            stats["caida_relation"] += 1
+            caida_relation.inc()
             continue
         else:
-            stats["abnormal"] += 1
+            abnormal.inc()
+        total_events.inc()
 
         client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
