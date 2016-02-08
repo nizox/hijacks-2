@@ -26,8 +26,18 @@ from kafka.common import ProduceRequest
 from prometheus_client import Counter, Gauge, start_http_server
 
 
+validated = Counter('validated', 'RPKI or route objects validated', ["collector"])
+relation = Counter('relation', 'aut-num org or mnt relation', ["collector"])
+connected = Counter('connected', 'same path', ["collector"])
+caida_relation = Counter('caida_relation', 'somehow related', ["collector"])
+caida_private = Counter('caida_private', 'somehow related', ["collector"])
+caida_as2org = Counter('caida_as2org', 'somehow related', ["collector"])
+caida_cone = Counter('caida_cone', 'somehow related', ["collector"])
+caida_as2rel = Counter('caida_as2rel', 'somehow related', ["collector"])
+abnormal = Counter('abnormal', 'no classification', ["collector"])
+
 events_latency = Gauge("events_latency", "BGP event detection latency", ["collector", "peer_as"])
-all_events = Counter("all_events", "BGP conflicts events", ["collector", "validated", "relation", "connected", "caida_relation", "caida_private", "caida_as2org", "caida_cone", "caida_as2rel"])
+all_events = Counter("all_events", "BGP conflicts events", ["collector", "filtered"])
 
 logger = logging.getLogger()
 
@@ -214,28 +224,39 @@ if __name__ == "__main__":
         for enrich_func in funcs:
             enrich_func(msg)
 
-        all_events.labels(args.collector, "valid" in msg, "relation" in msg, "direct" in msg, msg.get("caida_relation", False) is True, msg.get("caida_private", False) is True, msg.get("caida_as2org", False) is True, msg.get("caida_cone", False) is True, msg.get("caida_as2rel", False) is True).inc()
-
         filter_out = False
         # skip these events that are probably legitimate
         if "valid" in msg:
+            validated.labels(args.collector).inc()
             filter_out = True
         if "relation" in msg:
+            relation.labels(args.collector).inc()
             filter_out = True
         if "direct" in msg:
+            connected.labels(args.collector).inc()
             filter_out = True
         if msg.get("caida_private", False) is True:
+            caida_private.labels(args.collector).inc()
             filter_out = True
         if msg.get("caida_as2org", False) is True:
+            caida_as2org.labels(args.collector).inc()
             filter_out = True
         if msg.get("caida_relation", False) is True:
+            caida_relation.labels(args.collector).inc()
             filter_out = True
         if msg.get("caida_cone", False) is True:
+            caida_cone.labels(args.collector).inc()
             filter_out = True
         if msg.get("caida_as2rel", False) is True:
+            caida_as2rel.labels(args.collector).inc()
             filter_out = True
+
+        all_events.labels(args.collector, filter_out).inc()
 
         if filter_out:
             continue
 
+        abnormal.labels(args.collector).inc()
+
         client.send_produce_request([ProduceRequest("conflicts", PARTITIONS[args.collector], [create_message(json.dumps(msg))])])
+
